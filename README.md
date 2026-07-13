@@ -1,4 +1,4 @@
-# Colinha de prova — WorldSkills Cyber Security
+# WorldSkills Cyber Security
 
 Anotações próprias de estudo, organizadas pra busca rápida com **Ctrl+F no arquivo Raw do GitHub** (a visualização normal corta arquivo grande e o Ctrl+F falha nela — sempre abrir em Raw primeiro).
 
