@@ -62,13 +62,20 @@ nc <IP> <porta> < arquivo.txt   # manda um arquivo pro alvo que estiver escutand
 ```
 /usr/share/wordlists/rockyou.txt                                   # +14 milhões de senhas reais vazadas — a mais usada
 gunzip /usr/share/wordlists/rockyou.txt.gz                         # se vier compactada
-/usr/share/wordlists/dirb/common.txt                                # padrão pra gobuster/dirb
+/usr/share/wordlists/dirb/common.txt                                # padrão pra gobuster/dirb (pequena, rápida)
 /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt        # maior, se common.txt não achar nada
 /usr/share/seclists/                                                 # coleção enorme (usuários/senhas/subdomínios) — pode precisar apt install seclists
-head -n 50000 /caminho/rockyou.txt > rapida.txt                    # corta a wordlist gigante pra testar mais rápido sob pressão de tempo
+/usr/share/seclists/Passwords/Common-Credentials/10-million-password-list-top-1000.txt   # top senhas mais usadas — MUITO mais rápido que rockyou inteiro
+/usr/share/seclists/Usernames/top-usernames-shortlist.txt           # lista curta de usuários mais comuns (admin, root, user...)
+/usr/share/seclists/Usernames/Names/names.txt                       # nomes próprios — útil quando o site tem página "Equipe/Sobre" com nomes reais
+/usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt   # alternativa pro gobuster/ffuf quando common.txt/medium não acham nada
+/usr/share/wordlists/fasttrack.txt                                  # wordlist pequena e "esperta" (senhas comuns + variações), boa pra testar rápido antes da grande
+head -n 1000 /usr/share/wordlists/rockyou.txt > rapida.txt          # corta a wordlist gigante pra testar mais rápido sob pressão de tempo
 ```
-- Regra: `rockyou.txt` pra senha (hydra/hash cracking), `dirb/common.txt` pra achar diretório/arquivo em site.
-- Buscar: `seclists github`, `rockyou.txt location kali`
+- Regra geral: `rockyou.txt` pra senha (hydra/hash cracking) quando não tem pressa; **sob tempo de prova, preferir as listas "top"/"short" do seclists ou `fasttrack.txt`** — acham a senha certa quase tão bem, só que em segundos em vez de minutos/horas.
+- `dirb/common.txt` pra achar diretório/arquivo em site; se não achar nada, subir pra `raft-medium-directories.txt` antes de desistir.
+- Não sabe se o pacote `seclists` tá instalado? `locate seclists` ou `apt install seclists` (precisa internet/sudo).
+- Buscar: `seclists github`, `rockyou.txt location kali`, `seclists wordlist categories`
 
 ## COMANDOS BÁSICOS DE TERMINAL | não lembro o comando | shell no alvo (basic linux commands)
 

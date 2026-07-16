@@ -84,6 +84,39 @@ Testar SEMPRE antes de gobuster/ffuf/hydra pesado — é grátis e rápido:
 - Buscar quando não achar aqui: `default credentials <nome_exato_do_serviço>` — quase todo software conhecido tem lista pública.
 - Regra geral: senha "padrão de fábrica" quase sempre é o **nome do serviço**, `admin`, `password`, ou variação simples — testar essas 4-5 combinações leva segundos e resolve muita máquina de treino/prova.
 
+## BURP SUITE — PASSO A PASSO | interceptar requisição | testar login manualmente | fuzzing visual (Burp Suite walkthrough)
+
+Ferramenta com interface gráfica (já vem no Kali) pra ver e editar o que o navegador manda pro servidor **antes** de sair — útil pra testar login, achar campo escondido, ou fuzzar visualmente em vez de linha de comando.
+
+```
+1. Abrir "Burp Suite" (Community Edition) no menu do Kali
+2. Na tela inicial: "Next" → "Start Burp" (usar configuração padrão / Temporary project)
+3. Ir na aba "Proxy" → sub-aba "Intercept" → clicar "Intercept is on" (fica azul/ligado)
+4. Abrir o navegador EMBUTIDO do Burp (aba "Proxy" → botão "Open browser") — já vem configurado, não precisa mexer em proxy manual
+5. No navegador do Burp, ir até a página de login do alvo, digitar qualquer usuário/senha de teste, clicar em Entrar
+6. A requisição fica "presa" na aba Intercept — dá pra ver TODOS os campos exatos que o formulário manda (às vezes tem campo escondido que o HTML normal não mostra)
+```
+
+**Depois de capturar a requisição, dois caminhos:**
+
+**A) Testar manualmente (Repeater)** — mudar um campo por vez e reenviar, ver a resposta:
+```
+Botão direito na requisição capturada → "Send to Repeater"
+Na aba Repeater: editar o campo (ex: trocar a senha) → botão "Send" → ver resposta do lado direito
+```
+
+**B) Fuzzing automático (Intruder)** — testar uma wordlist inteira, igual o `ffuf`, mas visual:
+```
+Botão direito na requisição capturada → "Send to Intruder"
+Na aba Intruder → sub-aba "Positions": selecionar o valor que quer testar (ex: a senha) → clicar "Add §" nos dois lados dele (marca o campo)
+Sub-aba "Payloads": botão "Load" → escolher a wordlist (ex: seclists top-1000)
+Botão "Start attack" (canto superior direito)
+```
+- Resultado mostra uma **tabela** com cada tentativa + código de status + tamanho da resposta — a linha **diferente das outras** (status ou tamanho fora do padrão) é a senha/usuário certo.
+- Community Edition (grátis) do Intruder é mais lento que a versão paga — pra wordlist grande, prefira `ffuf`/`hydra` por linha de comando; Burp Intruder vale mais pra wordlist pequena ou quando quer **ver visualmente** cada tentativa.
+- Desligar "Intercept is on" depois de terminar, senão toda navegação normal fica travada esperando você liberar manualmente.
+- Buscar: `burp suite intruder tutorial`, `burp suite intercept basics`
+
 ## FORÇA BRUTA DE LOGIN | hydra | chutar senha | tentar várias senhas até acertar (brute force login)
 
 ```
