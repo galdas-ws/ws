@@ -36,11 +36,26 @@ dirb http://<IP> /usr/share/wordlists/dirb/common.txt   # alternativa mais simpl
 
 ```
 smbclient -L //<IP>/ -N        # lista compartilhamentos sem autenticação (-N = sem senha)
-smbclient //<IP>/nome_share -N # entra num compartilhamento específico
+smbclient //<IP>/nome_share -N # entra num compartilhamento específico (get/put dentro, igual FTP)
+smbmap -H <IP>                 # mostra shares JÁ com permissão (leitura/escrita) sem precisar entrar um por um
 enum4linux -a <IP>             # enumeração completa: usuários, shares, políticas
 ```
 - Vetor comum: share sem senha com arquivo de config/credencial esquecido dentro.
-- Buscar: `smb enumeration cheat sheet`, `enum4linux usage`
+- `smbmap` é mais rápido que testar `smbclient` manualmente em cada share — já mostra READ/WRITE de cada uma na primeira tela.
+- Buscar: `smb enumeration cheat sheet`, `enum4linux usage`, `smbmap usage`
+
+## NETCAT (`nc`) | canivete suíço de rede | testar porta na mão | pegar banner | mandar arquivo (netcat multi-use)
+
+```
+nc -zv <IP> 21-100              # testa rapidamente quais portas nessa faixa respondem (scan simples, sem nmap)
+nc <IP> <porta>                 # conecta e mostra o banner (versão/mensagem inicial) de QUALQUER serviço, não só FTP
+nc -lvnp <porta>                # fica ESCUTANDO nessa porta no meu Kali (usado pra receber reverse shell)
+nc -lvnp <porta> > recebido.txt # recebe um arquivo que o alvo mandar
+nc <IP> <porta> < arquivo.txt   # manda um arquivo pro alvo que estiver escutando do outro lado
+```
+- `nc <IP> <porta>` sem mais nada é o jeito mais rápido de "cutucar" uma porta e ver o que ela responde, antes de decidir qual ferramenta específica usar.
+- `-l` = listen (escuta), `-v` = verbose (mostra o que tá acontecendo), `-n` = não resolve DNS (mais rápido), `-p` = porta.
+- Buscar: `netcat cheat sheet`, `nc banner grabbing`
 
 ## WORDLIST | lista de senha | dicionário | "lista de palavras pra tentar" (password list / dictionary)
 
@@ -75,8 +90,30 @@ grep "ERRO" arquivo.log   # procura texto dentro do arquivo
 
 - Manda entrada aleatória/corrompida num campo/arquivo/API até achar falha ou travamento.
 - Tipos: black-box (sem ver código) / white-box (usa o código pra guiar) / mutation-based (corrompe input válido) / generation-based (cria do zero seguindo gramática).
-- `ffuf` é a ferramenta rápida pra isso em web (parâmetro/URL).
-- Buscar: `ffuf usage`, `web fuzzing wordlist`
+- `ffuf` é a ferramenta rápida pra isso em web (parâmetro/URL) — mais rápida que gobuster pra ver diferença de tamanho/status de resposta.
+- **Só funciona em web (porta 80/443)** — não existe fuzzing pra FTP puro; se só tem FTP/SSH sem web, ver seção "SÓ FTP/SSH" no arquivo `02-exploracao-shells.md`.
+
+```
+ffuf -u http://<IP>/FUZZ -w /usr/share/wordlists/dirb/common.txt              # achar diretório/arquivo escondido
+ffuf -u http://<IP>/login.php -X POST -d "username=FUZZ&password=teste" -w usuarios.txt -fc 401   # achar USUÁRIO certo (varia usuário, senha fixa)
+ffuf -u http://<IP>/login.php -X POST -d "username=admin&password=FUZZ" -w /usr/share/wordlists/rockyou.txt -fc 401  # achar SENHA (usuário já sabido, varia senha)
+```
+- `-X POST` = envia como formulário. `-d` = corpo da requisição com `FUZZ` no lugar do valor que tá testando. `-fc 401` = esconde da tela as tentativas com esse código de erro (só mostra o que for diferente = achou).
+- Por que é mais rápido que hydra pra web: hydra também serve, mas `ffuf` já é feito pra HTTP e mostra tamanho de resposta na hora, facilitando notar a diferença visualmente.
+- Buscar: `ffuf usage`, `ffuf post form fuzzing`, `web fuzzing wordlist`
+
+### FFUF — opções extras que ajudam sob tempo de prova
+
+```
+ffuf -u http://<IP>/FUZZ -w wordlist.txt -t 100          # -t = threads simultâneas (mais rápido; padrão é 40)
+ffuf -u http://<IP>/FUZZ -w wordlist.txt -mc 200,301,302 # -mc = só mostra esses códigos de resposta (match code)
+ffuf -u http://<IP>/FUZZ -w wordlist.txt -fs 1234        # -fs = esconde respostas de tamanho X (útil quando toda página "não existe" devolve o mesmo tamanho, aí o diferente é o achado)
+ffuf -u http://<IP>/FUZZ.php -w wordlist.txt             # testa uma extensão fixa direto no nome
+ffuf -u http://<IP>/FUZZ -w wordlist.txt -recursion -recursion-depth 2   # entra sozinho nas pastas que achar (não precisa rodar de novo manualmente em cada uma)
+```
+- **`-fs` (filtrar por tamanho) costuma ser mais confiável que olhar código de status** — muita página de erro devolve `200 OK` mesmo não existindo de verdade, mas o tamanho do conteúdo quase sempre é diferente do achado real.
+- `-t 100` acelera bastante — útil quando o tempo de prova tá curto e a wordlist é grande.
+- Buscar: `ffuf flags`, `ffuf recursive scan`
 
 ## RECON ATIVO | mapear o alvo | descobrir o que existe antes de atacar (active reconnaissance)
 

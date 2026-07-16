@@ -12,6 +12,78 @@ bye
 - Porta 21 aberta → sempre testar anônimo primeiro, antes de qualquer força bruta.
 - Achou arquivo de texto → pode ser wordlist de senha ou lista de usuário (ler antes de assumir).
 
+## FTP — COMANDOS COMPLETOS DENTRO DA SESSÃO | uso geral do FTP | baixar tudo | mandar arquivo (FTP session commands)
+
+```
+ftp <IP>                    # conecta
+nmap -p21 --script ftp-anon <IP>   # testa anônimo SEM precisar entrar manualmente (rápido, direto do terminal)
+nc <IP> 21                  # pega o banner (versão) sem nem logar — só conectar já mostra a mensagem inicial
+
+# dentro da sessão ftp (depois de logado):
+ls                          # lista arquivos
+cd pasta                    # entra em pasta
+pwd                         # em que pasta eu tô no servidor
+get arquivo                 # baixa 1 arquivo pro Kali
+mget *                      # baixa TODOS os arquivos da pasta atual de uma vez
+put arquivo                 # sobe 1 arquivo do Kali pro servidor (se tiver permissão de escrita)
+binary                      # muda pro modo binário — usar SEMPRE antes de get/put de arquivo que não é .txt (imagem, .zip, executável), senão corrompe
+prompt                      # desliga a confirmação "yes/no" antes de cada arquivo do mget (economiza tempo)
+bye                         # sai
+```
+- **`binary` antes de baixar/subir qualquer coisa que não seja texto puro** — esquecer isso é causa comum de arquivo baixado vir corrompido/quebrado.
+- Se o FTP permitir `put` (escrita) e a máquina também tiver site na mesma pasta → dá pra subir um webshell direto pelo FTP e acessar pela URL depois (mistura com a seção WEBSHELL abaixo).
+- Buscar: `ftp client commands cheat sheet`, `ftp-anon nmap script`
+
+## SSH — COMANDOS E USO | já tenho credencial, como entro | chave privada encontrada | erro de host key (SSH usage)
+
+```
+ssh usuario@<IP>                          # login normal com senha (pede a senha na hora)
+ssh usuario@<IP> -p <porta>               # se o SSH não tá na porta padrão 22
+ssh -i id_rsa usuario@<IP>                # login com CHAVE PRIVADA (achada via FTP/web/backup), não senha
+chmod 600 id_rsa                          # obrigatório antes do -i acima — SSH recusa chave com permissão aberta demais
+hydra -l usuario -P /usr/share/wordlists/dirb/common.txt ssh://<IP>   # força bruta rápida (wordlist pequena)
+scp arquivo usuario@<IP>:/caminho/destino # copia arquivo do Kali PRO alvo via SSH
+scp usuario@<IP>:/caminho/arquivo .       # copia arquivo DO alvo pro Kali (sentido invertido)
+ssh-keygen -R <IP>                        # limpa host key antiga salva (usar se der erro "REMOTE HOST IDENTIFICATION HAS CHANGED")
+```
+- SSH raramente é o ponto de **entrada** — ele é onde você **usa** a credencial que já achou em outro lugar (FTP, site, arquivo de config). Ver porta 22 aberta não significa atacar ela primeiro.
+- Se achar um arquivo `id_rsa` (chave privada) em qualquer lugar (FTP, backup, `.ssh/` de um user) → sempre tentar como login SSH antes de gastar tempo com senha.
+- Erro "Permission denied (publickey)" com `-i` → conferir se rodou o `chmod 600` antes.
+- Buscar: `ssh cheat sheet`, `ssh private key login`, `scp syntax`
+
+## SÓ FTP/SSH ABERTO, SEM WEB, SEM CREDENCIAL | travei, não sei o próximo passo | anônimo não funcionou (no web, no known creds)
+
+Ordem certa quando **não tem porta 80/443** (fuzzing de web não serve aqui) e o FTP anônimo falhou:
+
+```
+1. nmap -sV -sC -p21,22 <IP>        # pega a versão EXATA do serviço (ex: vsftpd 2.3.4, ProFTPd 1.3.5)
+2. searchsploit <nome_e_versão>     # ex: searchsploit vsftpd 2.3.4 — verifica exploit/backdoor conhecido
+3. searchsploit -m <caminho_do_exploit>   # copia o exploit encontrado pra pasta atual, pra ler/usar
+4. Testar credenciais óbvias na mão: ftp:ftp | anonymous:anonymous | admin:admin | root:root | test:test
+5. Só por último: hydra rápido (usuário fixo + wordlist pequena, nunca rockyou inteiro sob tempo de prova)
+   hydra -l ftpuser -P /usr/share/wordlists/dirb/common.txt ftp://<IP>
+```
+- **Passo 2 é o que mais gente esquece.** A porta pode estar "aberta" mas o próprio programa que roda nela ter uma falha conhecida (backdoor) — não precisa achar senha de ninguém, é uma falha do software. Ex. clássico: `vsftpd 2.3.4` tem backdoor documentado que dá shell direto.
+- Se achar credencial em QUALQUER lugar (FTP, site, arquivo) — **testa ela em todos os serviços abertos** (FTP, SSH, painel web). Reuso de senha entre serviços é o padrão mais comum nas máquinas de treino/prova.
+- Buscar: `searchsploit usage`, `<nome do serviço> <versão> exploit`, `<nome do serviço> default credentials`
+
+## CREDENCIAIS PADRÃO POR SERVIÇO | senha de fábrica | testar antes de força bruta (default credentials by service)
+
+Testar SEMPRE antes de gobuster/ffuf/hydra pesado — é grátis e rápido:
+
+| Serviço | Usuário | Senha |
+| --- | --- | --- |
+| FTP genérico | `ftp`, `anonymous` | `ftp`, em branco |
+| SSH genérico | `root`, `admin`, `user` | igual ao usuário, `123456`, `password` |
+| Tomcat Manager | `tomcat`, `admin` | `tomcat`, `s3cret`, `admin` |
+| MySQL | `root` | em branco, `root`, `toor` |
+| phpMyAdmin | `root` | em branco |
+| SMB/Windows | `administrator`, `guest` | em branco, `Password1`, nome da empresa |
+| Roteador/painel genérico | `admin` | `admin`, `password`, `1234` |
+| Qualquer painel | nome do app em minúsculo | `nome_do_app123`, `changeme` |
+- Buscar quando não achar aqui: `default credentials <nome_exato_do_serviço>` — quase todo software conhecido tem lista pública.
+- Regra geral: senha "padrão de fábrica" quase sempre é o **nome do serviço**, `admin`, `password`, ou variação simples — testar essas 4-5 combinações leva segundos e resolve muita máquina de treino/prova.
+
 ## FORÇA BRUTA DE LOGIN | hydra | chutar senha | tentar várias senhas até acertar (brute force login)
 
 ```
